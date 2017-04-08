@@ -3,20 +3,18 @@ require('../three/CTMLoader.js')
 
 class Game {
 	constructor(assets){
-		this.assets = assets;
-		this.renderer = new THREE.WebGLRenderer({antialias: true});
 		this.appW = 800;
 		this.appH = 600;
-	    this.renderer.setSize(this.appW, this.appH);
-	    this.scene = new THREE.Scene();
-	    this.scene.background = new THREE.Color(0x000000);
+		this.assets = assets;
+		this.renderer = new THREE.WebGLRenderer({antialias: true});
+		this.scene = new THREE.Scene();
 	    this.camera = new THREE.PerspectiveCamera(75, this.appW / this.appH, 1, 10000);
 	    // this.camera = new THREE.OrthographicCamera( -200, 200, 200, -200, -1000, 1000 );
-
-	    this.objthing;
-
 	    this.worldg = new THREE.Group();
 
+	    this.renderer.setSize(this.appW, this.appH);
+	    document.body.appendChild(this.renderer.domElement);
+	    this.scene.background = new THREE.Color(0x000000);
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
 	    Game.rotateLocal(this.camera, -36, 0, 0)
@@ -28,23 +26,21 @@ class Game {
 	        obj.position.z = -(Math.random() * 1000)
 
 	        this.worldg.add(obj)
-
 	        this.scene.add(obj);
 		}
 
 		console.log(this.worldg)
 
-		var dirLight = new THREE.DirectionalLight(0xffffff, 1);
-	    // this.dirLight.position = this.camera.position;
-	    dirLight.position.x += this.camera.position.x;
-	    dirLight.position.z += this.camera.position.z;
-	    dirLight.castShadow = true;
-	    this.scene.add(dirLight);
+		var light
 
-	    var light = new THREE.AmbientLight(0x8C8C8C);
+		light = new THREE.DirectionalLight(0xffffff, 1);
+	    light.position.set(-1, 1, 0.5)
+	    light.target.position.set(0, 0, 0);
+	    light.castShadow = true;
+	    this.scene.add(light);
+	    
+	    light = new THREE.AmbientLight(0x8C8C8C);
 	 	this.scene.add(light);
-	 
-	    document.body.appendChild(this.renderer.domElement);
 
 	    this.keyState = {};
 	    window.addEventListener('keydown', (e)=>{
@@ -62,13 +58,10 @@ class Game {
 			}
 		}, {passive: true});
 
-		var FPS = 60;
-		setInterval(()=> {
-		    this.animate();
-		}, 1000 / FPS);
+		this.update();
 	}
 	 
-	animate() {
+	update() {
 		var cam = this.camera
 		var keyState = this.keyState
 		var scene = this.scene
@@ -108,10 +101,11 @@ class Game {
 			obj.position.x = (Math.random() * 1000) - 500
 			obj.position.z = -(Math.random() * 1000)
 			scene.add( obj)
-		    keyState['x'] = false;
 		}
 
 		renderer.render(scene, cam);
+
+		requestAnimationFrame(()=> {this.update()});
 	}
 
 	static rotateLocal(object,degreeX, degreeY, degreeZ){
