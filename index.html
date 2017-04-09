@@ -20,7 +20,7 @@
 			left: 0px;
 			right: 0px;
 			bottom: 0px;
-			background-color: black;
+			background-color: white;
 			overflow-y: hidden;
 			overflow-x: hidden;
 		}
@@ -34,7 +34,7 @@
 		}
 		#title-bar {
 			-webkit-app-region: drag;
-			height: 32px; 
+			/*height: 32px; */
 			padding: 0px;
 			margin: 0px; 
 			color: white;
@@ -55,7 +55,7 @@
 			right: 0px; 
 		}
 		#title-bar-btns button {
-			height: 32px;
+			/*height: 32px;*/
 			width: 32px;
 			background-color: transparent;
 			border: none;
@@ -83,6 +83,12 @@
 <script src="./js/electron/default.js"></script>
 
 <a download="mapData.json" id="downloadlink" style="display: none">Download</a>
+
+<script>
+	var TITLEBARHEIGHT = 32;
+	document.getElementById("title-bar").style.height = TITLEBARHEIGHT + "px";
+	document.getElementById("title-bar-btns").style.height = TITLEBARHEIGHT + "px";
+</script>
 
 </body>
 </html>

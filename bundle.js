@@ -6,6 +6,7 @@ class Game {
 	constructor(assets){
 		this.appW = 800;
 		this.appH = 600;
+		this.titlebarheight = TITLEBARHEIGHT
 		this.assets = assets;
 		this.renderer = new THREE.WebGLRenderer({antialias: true});
 		this.scene = new THREE.Scene();
@@ -20,7 +21,7 @@ class Game {
 	    this.camera.position.y = 300;
 	    Game.rotateLocal(this.camera, -36, 0, 0)
 
-		for(var i = 0; i < 20; i++){
+		for(var i = 0; i < 1; i++){
 			var obj = this.assets[1].clone()
 
 	        obj.position.x = (Math.random() * 1000) - 500
@@ -30,7 +31,19 @@ class Game {
 	        this.scene.add(obj);
 		}
 
-		console.log(this.worldg)
+		var material = new THREE.MeshPhongMaterial({
+        	wireframe: false, 
+        	shading: THREE.FlatShading, 
+        	vertexColors: THREE.VertexColors,
+        	shininess: 0,
+        	color: 0xffa366
+        });
+		var plane = new THREE.Mesh(new THREE.PlaneGeometry(4000, 3500), material);
+ 		Game.rotateLocal(plane, -90, 0, 0)
+ 		// this.scene.add(plane);
+
+ 		this.raycaster = new THREE.Raycaster();
+		this.mouse = new THREE.Vector2();
 
 		var light
 
@@ -59,24 +72,31 @@ class Game {
 			}
 		}, {passive: true});
 
+		window.addEventListener( 'mousemove', (e)=>{
+			e.preventDefault();
+			this.mouse.x = (e.clientX / this.appW) * 2 - 1;
+			this.mouse.y = -((e.clientY - this.titlebarheight) / this.appH) * 2 + 1;
+		}, false );
+
 		this.update();
 	}
 	 
 	update() {
-		var cam = this.camera
+		var camera = this.camera
 		var keyState = this.keyState
 		var scene = this.scene
 		var renderer = this.renderer
-
+		var mouse = this.mouse;
+		
 		if(keyState['d']){
-			cam.position.x += 10;
+			camera.position.x += 10;
 		}else if(keyState['a']){
-			cam.position.x -= 10;
+			camera.position.x -= 10;
 		}
 		if(keyState['w']){
-			cam.position.z -= 10;
+			camera.position.z -= 10;
 		}else if(keyState['s']){
-			cam.position.z += 10;
+			camera.position.z += 10;
 		}
 		if(keyState['q']){
 			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), 1)
@@ -84,10 +104,10 @@ class Game {
 			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), -1)
 		}
 		if(keyState['zoomIn']){
-			cam.position.y -= 10;
+			camera.position.y -= 10;
 			keyState['zoomIn'] = false;
 		}else if (keyState['zoomOut']){
-			cam.position.y += 10;
+			camera.position.y += 10;
 			keyState['zoomOut'] = false;
 		}
 
@@ -104,15 +124,22 @@ class Game {
 			scene.add( obj)
 		}
 
-		renderer.render(scene, cam);
+		renderer.render(scene, camera);
+
+		this.raycaster.setFromCamera(mouse, camera);
+		var intersects = this.raycaster.intersectObjects(scene.children);
+		for (var i = 0; i < intersects.length; i++) {
+			intersects[i].object.material.color.set( 0xff0000 );
+		}
+		console.log(mouse)
 
 		requestAnimationFrame(()=> {this.update()});
 	}
 
 	static rotateLocal(object,degreeX, degreeY, degreeZ){
-		degreeX = (degreeX * Math.PI)/180;
-		degreeY = (degreeY * Math.PI)/180;
-		degreeZ = (degreeZ * Math.PI)/180;
+		degreeX = (degreeX * Math.PI) / 180;
+		degreeY = (degreeY * Math.PI) / 180;
+		degreeZ = (degreeZ * Math.PI) / 180;
 
 		object.rotateX(degreeX);
 		object.rotateY(degreeY);

@@ -5,12 +5,16 @@ class Game {
 	constructor(assets){
 		this.appW = 800;
 		this.appH = 600;
+		this.titlebarheight = TITLEBARHEIGHT
 		this.assets = assets;
-		this.renderer = new THREE.WebGLRenderer({antialias: true});
+		this.renderer = new THREE.WebGLRenderer({antialias: false});
 		this.scene = new THREE.Scene();
 	    this.camera = new THREE.PerspectiveCamera(75, this.appW / this.appH, 1, 10000);
 	    // this.camera = new THREE.OrthographicCamera( -200, 200, 200, -200, -1000, 1000 );
 	    this.worldg = new THREE.Group();
+	    this.char = this.assets["assets/ctms/grundus.ctm"].clone()
+	    this.camdist = 50;
+	    this.charLine;
 
 	    this.renderer.setSize(this.appW, this.appH);
 	    document.body.appendChild(this.renderer.domElement);
@@ -18,28 +22,59 @@ class Game {
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
 	    Game.rotateLocal(this.camera, -36, 0, 0)
+	    
+	    this.char.castShadow = true;
+	    this.scene.add(this.char);
 
-		for(var i = 0; i < 20; i++){
-			var obj = this.assets[1].clone()
+	    this.guygroup = new THREE.Group();
+	    this.char.add(this.guygroup);
 
-	        obj.position.x = (Math.random() * 1000) - 500
-	        obj.position.z = -(Math.random() * 1000)
+	    this.cube = new THREE.Mesh(new THREE.CubeGeometry(4,4,4), new THREE.MeshNormalMaterial());
+    	this.guygroup.add(this.cube);
+    	this.cube.position.set(this.char.position.x, this.char.position.y - 10, this.char.position.z + 7)
 
-	        this.worldg.add(obj)
-	        this.scene.add(obj);
-		}
+    	this.char.position.set(-90, 20, 0)
+    	// this.cube.position.set(this.getCenterPoint(this.char))
+	    // rayOrigin = new THREE.Vector3(char.position.x, char.position.y + box.max.y, char.position.z)
 
-		console.log(this.worldg)
 
-		var light
+	    this.renderer.shadowMap.enabled = true;
+		// this.renderer.shadowMapSoft = true;
+		// this.renderer.shadowCameraNear = 3;
+		// this.renderer.shadowCameraFar = this.camera.far;
+		// this.renderer.shadowCameraFov = 0;
+		// this.renderer.shadowMapBias = 0.0039;
+		// this.renderer.shadowMapDarkness = 0.5;
+		// this.renderer.shadowMapWidth = 1024;
+		// this.renderer.shadowMapHeight = 1024;
 
-		light = new THREE.DirectionalLight(0xffffff, 1);
-	    light.position.set(-1, 1, 0.5)
+        this.land = this.assets["assets/ctms/land.ctm"].clone()
+		var land = this.land;
+		this.land.receiveShadow = true;
+		land.scale.x = 50
+		land.scale.y = 50
+		land.scale.z = 50
+		land.position.set(-150,-50,0)
+		this.scene.add(land);
+
+ 		this.raycaster = new THREE.Raycaster()
+		this.mouse = new THREE.Vector2()
+
+		//lights
+		var light;
+		light = new THREE.DirectionalLight(0xffffff, 0.5);
+	    light.position.set(-1000, 1000, 500)
 	    light.target.position.set(0, 0, 0);
 	    light.castShadow = true;
+	    light.shadow.camera.near = 0;
+		light.shadow.camera.far = 5000;
+		light.shadow.camera.left = -100;
+		light.shadow.camera.right = 100;
+		light.shadow.camera.top = 100;
+		light.shadow.camera.bottom = -100;
 	    this.scene.add(light);
-	    
-	    light = new THREE.AmbientLight(0x8C8C8C);
+	    this.dirlight = light;
+	    light = new THREE.AmbientLight(0x8C8C8C, 1);
 	 	this.scene.add(light);
 
 	    this.keyState = {};
@@ -58,60 +93,182 @@ class Game {
 			}
 		}, {passive: true});
 
+		window.addEventListener( 'mousemove', (e)=>{
+			e.preventDefault();
+			this.mouse.x = (e.clientX / this.appW) * 2 - 1;
+			this.mouse.y = -((e.clientY - this.titlebarheight) / this.appH) * 2 + 1;
+		}, false );
+
 		this.update();
 	}
 	 
 	update() {
-		var cam = this.camera
+		var camera = this.camera
 		var keyState = this.keyState
 		var scene = this.scene
 		var renderer = this.renderer
-
+		var mouse = this.mouse;
+		var char = this.char;
+		
 		if(keyState['d']){
-			cam.position.x += 10;
+			Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), -2)
 		}else if(keyState['a']){
-			cam.position.x -= 10;
+			Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), 2)
 		}
 		if(keyState['w']){
-			cam.position.z -= 10;
+			char.translateY(-1)
 		}else if(keyState['s']){
-			cam.position.z += 10;
-		}
-		if(keyState['q']){
-			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), 1)
-		}else if(keyState['e']){
-			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), -1)
+			char.translateY(1)
 		}
 		if(keyState['zoomIn']){
-			cam.position.y -= 10;
+			this.camdist -= 3;
 			keyState['zoomIn'] = false;
 		}else if (keyState['zoomOut']){
-			cam.position.y += 10;
+			this.camdist += 3;
 			keyState['zoomOut'] = false;
 		}
 
-		if(this.objthing !== undefined){
-			this.objthing.rotation.z += 0.01;
-			this.objthing.rotation.x += 0.01;
-	    	this.objthing.rotation.y += 0.01;
+		var charpos = new THREE.Vector3(char.position.x, char.position.y, char.position.z)
+		camera.position.set(char.position.x, char.position.y + this.camdist, char.position.z + this.camdist)
+		camera.lookAt(char.position)
+
+		// this.dirlight.position.set(char.position.x, char.position.y + this.camdist, char.position.z + this.camdist)
+
+		if(this.land !== undefined){
+			// this.land.rotation.z += 0.01;
+			// this.land.rotation.x += 0.001;
+	    	// this.land.rotation.y += 0.01;
 		}
 
 	    if(keyState['x']){
-		    var obj = this.assets[0].clone()
+		    var obj = this.assets["assets/ctms/house2.ctm"].clone()
 			obj.position.x = (Math.random() * 1000) - 500
 			obj.position.z = -(Math.random() * 1000)
 			scene.add( obj)
 		}
 
-		renderer.render(scene, cam);
+		renderer.render(scene, camera);
+		this.raycaster.setFromCamera(mouse, camera);
+		var intersects = this.raycaster.intersectObjects(scene.children);
+		for (var i = 0; i < intersects.length; i++) {
+			// intersects[0].object.material.color.set(0xff0000);
+			// intersects[0].object.position.x += 1
+		}
+
+
+		var box = new THREE.Box3().setFromObject(char);
+		var rayOrigin = new THREE.Vector3(char.position.x, char.position.y + (box.getSize().y / 2), char.position.z)
+		var ray = new THREE.Raycaster()
+		ray.set(rayOrigin, new THREE.Vector3(0, -1, 0));
+		var collision = ray.intersectObject(this.land);
+		if(collision[0] !== undefined){
+			// char.position.y = collision[0].point.y
+		}
+
+		var material = new THREE.LineBasicMaterial({
+			color: 0x0000ff
+		});
+		var geometry = new THREE.Geometry();
+		var v1 = new THREE.Vector3();
+		v1.add(char.up);
+		char.updateMatrixWorld();
+		v1.copy(char.up).applyQuaternion(char.quaternion);
+		// rayOrigin = new THREE.Vector3(char.position.x, ((box.max.y + box.min.y) / 2), char.position.z)
+		// rayOrigin = new THREE.Vector3(char.position.x, char.position.y + box.max.y, char.position.z)
+		var pLocal = new THREE.Vector3( 0, 0, -1 );
+		var pWorld = pLocal.applyMatrix4(char.matrixWorld);
+		var dir = pWorld.sub(char.position).normalize();
+		// vector.setFromMatrixPosition(this.cube.matrixWorld);
+
+		var charCenter = this.getCenterPoint(char);
+		//forward
+		geometry.vertices.push(
+			charCenter,
+			new THREE.Vector3().addVectors(charCenter, v1.multiplyScalar(-9))
+		);
+
+		//down
+		geometry.vertices.push(
+			charCenter,
+			new THREE.Vector3().addVectors(charCenter, dir.multiplyScalar(19))
+			// new THREE.Vector3().addVectors(this.getCenterPoint(char), dir.multiplyScalar(19))
+			// dir
+		);
+		scene.remove(this.charLine)
+		this.charLine = new THREE.Line(geometry, material);
+		scene.add(this.charLine);
+
+		ray.set(charCenter, new THREE.Vector3().addVectors(charCenter, dir.multiplyScalar(19)));
+		var collision = ray.intersectObject(this.land);
+		if(collision[0] !== undefined){
+			// char.position.y = collision[0].point.y
+			// console.log(collision[0])
+
+			var newDir = collision[0].face.normal
+			var pos = new THREE.Vector3();
+			pos.addVectors(newDir, char.position);
+			// char.lookAt(pos);
+			// char.rotation.set(pos)
+			// char.up.set(newDir.normalize())
+			// console.log(char.up)
+			// char.up.set(charCenter.x + newDir.x, charCenter.y + newDir.y, charCenter.z + newDir.z);
+
+			
+			// char.lookAt(new THREE.Vector3(charCenter.x + newDir.x, charCenter.y + newDir.y, charCenter.z + newDir.z));
+
+			// char.up.set(newDir.x, newDir.y,newDir.z);
+			// var h = new THREE.Vector3().addVectors(charCenter, v1)
+			// char.lookAt(this.cube.position.x, this.cube.position.y, this.cube.position.z);
+
+		}
+
+		// char.up.set(0, 0, 1);
+		char.up.set(charCenter.x + 0, charCenter.y + 100, charCenter.z);
+		char.lookAt(new THREE.Vector3(0, 0, 1))
+
+		scene.updateMatrixWorld();
+		var vector = new THREE.Vector3();
+		vector.setFromMatrixPosition( this.cube.matrixWorld );
+		// var cubeWorld = child.localToWorld( parent.position )
+		// char.lookAt(vector.x, vector.y, vector.z);
+
+		if(keyState['q']){
+			if(collision[0] !== undefined)
+				console.log(collision[0].face.normal)
+		}else if(keyState['e']){
+			// Game.rotateLocal(char, 4, 0, 0)
+			// this.char.remove(this.cube)
+			Game.rotateAroundObjectAxis(this.guygroup, new THREE.Vector3(0, 0, 1), 1)
+			// this.char.add(this.cube)
+			// Game.rotateGlobal(char, new THREE.Vector3(1, 0, 0), 1)
+			// console.log(this.getCenterPoint(char))
+		}
+
+		
+
+		
 
 		requestAnimationFrame(()=> {this.update()});
 	}
 
-	static rotateLocal(object,degreeX, degreeY, degreeZ){
-		degreeX = (degreeX * Math.PI)/180;
-		degreeY = (degreeY * Math.PI)/180;
-		degreeZ = (degreeZ * Math.PI)/180;
+	getCenterPoint(mesh) {
+	    var middle = new THREE.Vector3();
+	    var geometry = mesh.geometry;
+
+	    geometry.computeBoundingBox();
+
+	    middle.x = (geometry.boundingBox.max.x + geometry.boundingBox.min.x) / 2;
+	    middle.y = (geometry.boundingBox.max.y + geometry.boundingBox.min.y) / 2;
+	    middle.z = (geometry.boundingBox.max.z + geometry.boundingBox.min.z) / 2;
+
+	    mesh.localToWorld( middle );
+	    return middle;
+	}
+
+	static rotateLocal(object, degreeX, degreeY, degreeZ){
+		degreeX = (degreeX * Math.PI) / 180;
+		degreeY = (degreeY * Math.PI) / 180;
+		degreeZ = (degreeZ * Math.PI) / 180;
 
 		object.rotateX(degreeX);
 		object.rotateY(degreeY);
@@ -126,6 +283,15 @@ class Game {
 	    rotWorldMatrix.multiply(object.matrix); // pre-multiply
 	    object.matrix = rotWorldMatrix;
 	    object.rotation.setFromRotationMatrix(object.matrix)
+	}
+
+	static rotateAroundObjectAxis( object, axis, degrees ) {
+		var radians = degrees * Math.PI / 180
+
+	    var rotationMatrix = new THREE.Matrix4();
+	    rotationMatrix.makeRotationAxis( axis.normalize(), radians );
+	    object.matrix.multiply( rotationMatrix );                       // post-multiply
+	    object.rotation.setFromRotationMatrix(object.matrix, object.order);
 	}
 }
 

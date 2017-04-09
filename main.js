@@ -5,15 +5,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	var assetnames = [
 		"assets/ctms/bugsports.ctm",
-		"assets/ctms/house2.ctm"
+		"assets/ctms/house2.ctm",
+		"assets/ctms/land.ctm",
+		"assets/ctms/grundus.ctm"
 	]
 
 	var promises = [];
-	var assetmeshes = [];
+	var assetmeshes = {};
 	for(var i = 0; i < assetnames.length; i++){
-		var file = assetnames[i];
 		promises.push(
 			new Promise(function(resolve, reject) {
+				var file = assetnames[i];
 				new THREE.CTMLoader().load(file, (geometry)=> {
 					var material = new THREE.MeshPhongMaterial({
 			        	wireframe: false, 
@@ -29,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			        Game.rotateLocal(obj, -90, 0, 0)
 
-					assetmeshes.push(obj)
+					assetmeshes[file] = obj
 					resolve();
 				})
 			})
