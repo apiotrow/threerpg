@@ -1,5 +1,6 @@
 var THREE = require('three');
 require('../three/CTMLoader.js')
+var OrbitControls = require('three-orbitcontrols')
 
 class Game {
 	constructor(assets){
@@ -22,6 +23,11 @@ class Game {
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
 	    Game.rotateLocal(this.camera, -36, 0, 0)
+
+	 //    var controls = new OrbitControls( this.camera, this.renderer.domElement );
+	 //    controls.enableDamping = true
+		// controls.dampingFactor = 0.25
+		// controls.enableZoom = false
 	    
 	    this.char.castShadow = true;
 	    this.scene.add(this.char);
@@ -31,9 +37,9 @@ class Game {
 
 	    this.cube = new THREE.Mesh(new THREE.CubeGeometry(4,4,4), new THREE.MeshNormalMaterial());
     	this.guygroup.add(this.cube);
-    	this.cube.position.set(this.char.position.x, this.char.position.y - 10, this.char.position.z + 7)
+    	this.cube.position.set(this.char.position.x - 0.5, this.char.position.y + 0.5, this.char.position.z + 17)
 
-    	this.char.position.set(-90, 20, 0)
+    	this.char.position.set(-200, 120, 0)
     	// this.cube.position.set(this.getCenterPoint(this.char))
 	    // rayOrigin = new THREE.Vector3(char.position.x, char.position.y + box.max.y, char.position.z)
 
@@ -99,6 +105,8 @@ class Game {
 			this.mouse.y = -((e.clientY - this.titlebarheight) / this.appH) * 2 + 1;
 		}, false );
 
+		this.qtt = 0;
+
 		this.update();
 	}
 	 
@@ -111,9 +119,11 @@ class Game {
 		var char = this.char;
 		
 		if(keyState['d']){
-			Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), -2)
+			// Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), -2)
+			Game.rotateLocal(char, 0, 0, -3)
 		}else if(keyState['a']){
-			Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), 2)
+			// Game.rotateGlobal(char, new THREE.Vector3(0, 1, 0), 2)
+			Game.rotateLocal(char, 0, 0, 3)
 		}
 		if(keyState['w']){
 			char.translateY(-1)
@@ -129,7 +139,7 @@ class Game {
 		}
 
 		var charpos = new THREE.Vector3(char.position.x, char.position.y, char.position.z)
-		camera.position.set(char.position.x, char.position.y + this.camdist, char.position.z + this.camdist)
+		// camera.position.set(char.position.x, char.position.y + this.camdist, char.position.z + this.camdist)
 		camera.lookAt(char.position)
 
 		// this.dirlight.position.set(char.position.x, char.position.y + this.camdist, char.position.z + this.camdist)
@@ -162,7 +172,7 @@ class Game {
 		ray.set(rayOrigin, new THREE.Vector3(0, -1, 0));
 		var collision = ray.intersectObject(this.land);
 		if(collision[0] !== undefined){
-			// char.position.y = collision[0].point.y
+			char.position.y = collision[0].point.y
 		}
 
 		var material = new THREE.LineBasicMaterial({
@@ -170,8 +180,8 @@ class Game {
 		});
 		var geometry = new THREE.Geometry();
 		var v1 = new THREE.Vector3();
-		v1.add(char.up);
-		char.updateMatrixWorld();
+		// v1.add(char.up);
+		// char.updateMatrixWorld();
 		v1.copy(char.up).applyQuaternion(char.quaternion);
 		// rayOrigin = new THREE.Vector3(char.position.x, ((box.max.y + box.min.y) / 2), char.position.z)
 		// rayOrigin = new THREE.Vector3(char.position.x, char.position.y + box.max.y, char.position.z)
@@ -194,6 +204,10 @@ class Game {
 			// new THREE.Vector3().addVectors(this.getCenterPoint(char), dir.multiplyScalar(19))
 			// dir
 		);
+
+		var cc = new THREE.Vector3();
+		cc.copy(charCenter).sub(new THREE.Vector3().addVectors(charCenter, dir)).normalize()
+		
 		scene.remove(this.charLine)
 		this.charLine = new THREE.Line(geometry, material);
 		scene.add(this.charLine);
@@ -207,42 +221,115 @@ class Game {
 			var newDir = collision[0].face.normal
 			var pos = new THREE.Vector3();
 			pos.addVectors(newDir, char.position);
+
+			// console.log(cc, newDir)
+			newDir.x = -newDir.x
+			newDir.y = -newDir.y
+			newDir.z = -newDir.z
+
+			var qt = new THREE.Quaternion();
+			qt.setFromUnitVectors(cc, newDir)
+			// console.log(qt)
+			// char.setRotationFromQuaternion(qt)
 			// char.lookAt(pos);
 			// char.rotation.set(pos)
-			// char.up.set(newDir.normalize())
+			// char.up.set(newDir.normalize())d
 			// console.log(char.up)
 			// char.up.set(charCenter.x + newDir.x, charCenter.y + newDir.y, charCenter.z + newDir.z);
 
 			
 			// char.lookAt(new THREE.Vector3(charCenter.x + newDir.x, charCenter.y + newDir.y, charCenter.z + newDir.z));
 
-			// char.up.set(newDir.x, newDir.y,newDir.z);
-			// var h = new THREE.Vector3().addVectors(charCenter, v1)
-			// char.lookAt(this.cube.position.x, this.cube.position.y, this.cube.position.z);
+			// if(char.up != newDir){
+			// 	char.up.set(newDir.x, newDir.y, newDir.z);
+			// 	// var h = new THREE.Vector3().addVectors(charCenter, v1)
+			// 	// char.lookAt(this.cube.position.x, this.cube.position.y, this.cube.position.z);
+			// 	char.lookAt(new THREE.Vector3(0, 0, 1))
+			// }
 
+			// var newPoint = new THREE.Vector3(
+			//     char.position.y + newDir.x,
+			//     char.position.z + newDir.y,
+			//     char.position.x + newDir.z
+			// );
+
+			
 		}
 
-		// char.up.set(0, 0, 1);
-		char.up.set(charCenter.x + 0, charCenter.y + 100, charCenter.z);
-		char.lookAt(new THREE.Vector3(0, 0, 1))
+		// char.up = new THREE.Vector3(charCenter.x + 0, charCenter.y + 0, charCenter.z + 1 ).normalize();//Z axis up
+		// console.log(newDir)
+		// char.lookAt(new THREE.Vector3( 0, 0, 1 )); 
 
-		scene.updateMatrixWorld();
-		var vector = new THREE.Vector3();
-		vector.setFromMatrixPosition( this.cube.matrixWorld );
+
+
+		var vec = new THREE.Vector3(1, 1, 1);
+		// vec.applyEuler(char.getWorldRotation())
+		vec.applyQuaternion(char.getWorldQuaternion())
+		// var qt = new THREE.Quaternion();
+		// qt.x = 0
+		// qt.y = 1
+		// qt.z = 0
+		// qt.w = 0
+
+		
+		// var vv1 = new THREE.Vector3().addVectors(charCenter, v1).normalize()
+		// var vv1 = new THREE.Vector3(0.7, 0, 0.7).normalize()
+		// var vv1 = new THREE.Vector3(0, 0, 1).normalize()
+		// var vv2 = new THREE.Vector3(1, 0, 0).normalize()
+		// qt.setFromUnitVectors(vv1, vv2)
+
+		// char.setRotationFromQuaternion(qt)
+
+
+		
+
+
+
+		// var matrix = new THREE.Matrix4()
+		// var axis = new THREE.Vector3()
+		// axis.crossVectors(vv1, vv2); 
+		// console.log(axis)
+
+		// var angle = vv1.angleTo( vv2 );
+		// matrix.makeRotationAxis( axis, angle )
+		// char.applyMatrix( matrix );
+
+		// var eul = new THREE.Euler(4, 0, 0, 'XYZ');
+		// console.log(char.getWorldQuaternion())
+		// console.log(char.getWorldRotation())
+		// console.log(qt)
+		
+		// char.setRotationFromEuler(eul)
+
+		// char.up.set(0, 0, 1);
+		// char.up.set(0.7, 0, 0.7);
+		// char.lookAt(new THREE.Vector3(0, 0, 1))
+		// char.setRotationFromAxisAngle(new THREE.Vector3(0.7, 0, 0.7), 90 * Math.PI / 180);
+
+		// scene.updateMatrixWorld();
+		// var vector = new THREE.Vector3();
+		// vector.setFromMatrixPosition( this.cube.matrixWorld );
 		// var cubeWorld = child.localToWorld( parent.position )
 		// char.lookAt(vector.x, vector.y, vector.z);
 
 		if(keyState['q']){
 			if(collision[0] !== undefined)
 				console.log(collision[0].face.normal)
+
+			this.qtt -= 0.1
 		}else if(keyState['e']){
-			// Game.rotateLocal(char, 4, 0, 0)
+			Game.rotateLocal(this.land, 1, 0, 0)
 			// this.char.remove(this.cube)
-			Game.rotateAroundObjectAxis(this.guygroup, new THREE.Vector3(0, 0, 1), 1)
+			// Game.rotateAroundObjectAxis(this.guygroup, new THREE.Vector3(0, 0, 1), 1)
 			// this.char.add(this.cube)
 			// Game.rotateGlobal(char, new THREE.Vector3(1, 0, 0), 1)
 			// console.log(this.getCenterPoint(char))
+
+			// char.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), 270 * Math.PI / 180);
+			this.qtt += 0.1
 		}
+
+		
 
 		
 
