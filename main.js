@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
 	var THREE = require('three');
 	var Game = require('./js/game/game.js')
+	var assets = require('./assets.json')
 	require('./js/three/CTMLoader.js')
 
-	var assetnames = [
-		"assets/ctms/bugsports.ctm",
-		"assets/ctms/house2.ctm",
-		"assets/ctms/land.ctm",
-		"assets/ctms/grundus.ctm"
-	]
+	console.log(assets)
+
+	var assetnames = []
+	for(var i in assets){
+		assetnames.push(i)
+	}
+
 
 	var promises = [];
 	var assetmeshes = {};
