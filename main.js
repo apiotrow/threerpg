@@ -4,13 +4,10 @@ document.addEventListener('DOMContentLoaded', function () {
 	var assets = require('./assets.json')
 	require('./js/three/CTMLoader.js')
 
-	console.log(assets)
-
 	var assetnames = []
 	for(var i in assets){
 		assetnames.push(i)
 	}
-
 
 	var promises = [];
 	var assetmeshes = {};
