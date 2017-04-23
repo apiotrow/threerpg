@@ -61,53 +61,120 @@ class Game {
 		}, {passive: true});
 
 		this.generateTerrain();
+		// this.generateSquareTerrain();
 
 		this.update();
+	}
+
+	generateSquareTerrain(){
+		var geom = new THREE.Geometry();
+
+
 	}
 
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapD = 100;
+		var mapD = 35
+		var tileD = 50
+		var heightM = 250
 
 		var h = perlin.generatePerlinNoise(mapD, mapD);
 
-		console.log(h.length)
-
 		for(var i = 0; i < mapD; i++){
 			for(var j = 0; j < mapD; j++){
-				geom.vertices.push(new THREE.Vector3(j * 10, h[(i * 10) + j] * 40, i * 10));
+				var index = (i * mapD) + j
+
+				var hCont = h[index] * heightM;
+
+				var hDiscLevels = 5;
+				var hDisc = (Math.floor(h[index] * hDiscLevels) * heightM) / hDiscLevels;
+
+				geom.vertices.push(new THREE.Vector3(j * tileD, hDisc, i * tileD));
 			}
 		}
 
+
+		//snake a line through verts to create grid
+		var lineMaterial = new THREE.LineBasicMaterial({color: 0xDF4949, linewidth: 5});
+		var horizontalLineGeom = new THREE.Geometry();
+		var verticalLineGeom = new THREE.Geometry();
+
+		var count = 0
+		var nextVert = -1;
+		var goingRight = true
+
+		while(count < mapD * mapD){
+			if(goingRight && (nextVert + 1) % mapD == 0){
+				nextVert += mapD
+				goingRight = false
+				count++
+			}else if(!goingRight && nextVert % mapD == 0){
+				nextVert += mapD
+				goingRight = true
+				count++
+			}else{
+				if(goingRight)
+					nextVert++
+				else
+					nextVert--
+			}
+
+			horizontalLineGeom.vertices.push(geom.vertices[nextVert])
+
+			count++
+		}
+		
+		count = 0
+		nextVert = 0;
+		var goingDown = true
+		verticalLineGeom.vertices.push(geom.vertices[0])
+
+		while(count < mapD * mapD){
+			if(goingDown && nextVert >= (mapD * (mapD - 1))){
+				nextVert++
+				goingDown = false
+				count++
+			}else if(!goingDown && nextVert < mapD){
+				nextVert++
+				goingDown = true
+				count++
+			}else{
+				if(goingDown)
+					nextVert += mapD
+				else
+					nextVert -= mapD
+			}
+
+			verticalLineGeom.vertices.push(geom.vertices[nextVert])
+
+			count++
+		}
+
+
+		//create faces
 		for(var i = 0; i < (mapD * (mapD - 1)) - 1; i++){
 			if((i + 1) % mapD == 0)
 				continue
 
 			geom.faces.push(new THREE.Face3(i, i + mapD, i + 1));
 			geom.faces.push(new THREE.Face3(i + mapD, i + mapD + 1, i + 1));
-
-			// geom.faces.push(new THREE.Face3(i, i + 1, i + mapD));
-			// if(i + 1 + mapD < mapD * mapD)
-			// geom.faces.push(new THREE.Face3(i + 1, i + 1 + mapD, i + mapD));
 		}
 
+		this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
+		this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
 
-		// var v1 = new THREE.Vector3(0,0,0);
-		// var v2 = new THREE.Vector3(0,0,50);
-		// var v3 = new THREE.Vector3(50,0,50);
-		// geom.vertices.push(v1);
-		// geom.vertices.push(v2);
-		// geom.vertices.push(v3);
-		// geom.faces.push(new THREE.Face3(0, 1, 2));
+		//center camera
+		this.camera.position.x = (mapD * tileD) / 2
+		this.camera.position.z = (mapD * tileD)
 
 		geom.computeFaceNormals();
 
-		var terrain = new THREE.Mesh(geom, new THREE.MeshNormalMaterial());
-		this.scene.add(terrain);
+		this.terrain = new THREE.Mesh(geom, new THREE.MeshNormalMaterial());
+		this.scene.add(this.terrain);
 	}
 	 
-	update() {
+	update(){
 		var cam = this.camera
 		var keyState = this.keyState
 		var scene = this.scene
@@ -143,10 +210,11 @@ class Game {
 		}
 
 	    if(keyState['x']){
-		    var obj = this.assets[0].clone()
-			obj.position.x = (Math.random() * 1000) - 500
-			obj.position.z = -(Math.random() * 1000)
-			scene.add( obj)
+		    for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
+		    	var vec = this.terrain.geometry.vertices[i]
+		    	vec.x *= Math.random()
+		    	this.terrain.geometry.verticesNeedUpdate = true;
+		    }
 		}
 
 		renderer.render(scene, cam);
