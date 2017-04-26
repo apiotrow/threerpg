@@ -8,19 +8,21 @@ class Game {
 		this.appW = 800;
 		this.appH = 600;
 		this.assets = assets;
+		console.log(this.assets)
 		this.titlebarheight = TITLEBARHEIGHT
 		this.renderer = new THREE.WebGLRenderer({antialias: true});
 		this.scene = new THREE.Scene();
 	    this.camera = new THREE.PerspectiveCamera(75, this.appW / this.appH, 1, 10000);
 	    // this.camera = new THREE.OrthographicCamera( -200, 200, 200, -200, -1000, 1000 );
 	    this.worldg = new THREE.Group();
+	    this.scene.add(this.worldg);
 
 	    this.renderer.setSize(this.appW, this.appH);
 	    document.body.appendChild(this.renderer.domElement);
 	    this.scene.background = new THREE.Color(0x000000);
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
-	    Game.rotateLocal(this.camera, -36, 0, 0)
+	    Game.rotateLocal(this.camera, -45, 0, 0)
 
 	    this.raycaster = new THREE.Raycaster()
 		this.mouse = new THREE.Vector2()
@@ -43,7 +45,6 @@ class Game {
 	        obj.position.z = -(Math.random() * 1000)
 
 	        this.worldg.add(obj)
-	        this.scene.add(obj);
 		}
 
 		var light
@@ -72,26 +73,24 @@ class Game {
 				this.keyState['zoomOut'] = true;
 			}
 		}, {passive: true});
+		window.addEventListener("mouseup", (e)=>{
+			this.keyState["Lmouse"] = true;
+		}, true);
 
 		this.generateTerrain();
-		// this.generateSquareTerrain();
 
 		this.update();
-	}
-
-	generateSquareTerrain(){
-		var geom = new THREE.Geometry();
-
-
 	}
 
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapD = 10
+		var mapDActual = 100;
 		var tileD = 10
 		var heightM = 80
 
+		var mapD = mapDActual + 1
+		
 		var h = perlin.generatePerlinNoise(mapD, mapD);
 
 		//push vertices into geometry
@@ -101,7 +100,7 @@ class Game {
 
 				var hCont = h[index] * heightM;
 
-				var hDiscLevels = 7;
+				var hDiscLevels = 10;
 				var hDisc = (Math.floor(h[index] * hDiscLevels) * heightM) / hDiscLevels;
 
 				geom.vertices.push(new THREE.Vector3(j * tileD, hDisc, i * tileD));
@@ -172,6 +171,7 @@ class Game {
 
 
 		//create faces
+		var count = -1;
 		for(var i = 0; i < (mapD * (mapD - 1)) - 1; i++){
 			if((i + 1) % mapD == 0)
 				continue
@@ -179,26 +179,35 @@ class Game {
 			var face1 = new THREE.Face3(i, i + mapD, i + 1)
 			var face2 = new THREE.Face3(i + mapD, i + mapD + 1, i + 1)
 
-			var index = i + j
-			var tile = new Tile(face1, face2, index)
+			geom.faces.push(face1);
+			geom.faces.push(face2);
+
+			var topleft = geom.vertices[i]
+			var bottomright = geom.vertices[i + mapD + 1]
+			var pos = new THREE.Vector3(
+				(bottomright.x + topleft.x) / 2,
+				(bottomright.y + topleft.y) / 2,
+				(bottomright.z + topleft.z) / 2)
+
+			var index = i
+			var tile = new Tile(face1, face2, index, pos)
 			face1.tile = tile
 			face2.tile = tile
 			tile.init()
 
-			this.tiles[index] = tile
-
-			geom.faces.push(face1);
-			geom.faces.push(face2);
+			this.tiles[++count] = tile
 		}
 
-		console.log(this.tiles)
+		//calculate normals for faces
+		geom.computeFaceNormals();
+		for(var i in this.tiles){
+			this.tiles[i].determineFlatness()
+		}
 
 		//center camera
 		this.camera.position.x = (mapD * tileD) / 2
 		this.camera.position.z = (mapD * tileD)
 		this.camera.position.y = heightM * 2
-
-		geom.computeFaceNormals();
 
 		// this.terrain = new THREE.Mesh(geom, new THREE.MeshStandardMaterial());
 		this.terrain = new THREE.Mesh(geom,
@@ -209,6 +218,19 @@ class Game {
 	        	shininess: 0
 	        }));
 		this.scene.add(this.terrain);
+
+		//add trees
+		for(var i in this.tiles){
+			if(this.tiles[i].flatFace){
+				var obj = this.assets["assets/ctms/tree.ctm"].clone()
+
+				obj.position.x = this.tiles[i].position.x
+				obj.position.y = this.tiles[i].position.y
+		        obj.position.z = this.tiles[i].position.z
+
+		        this.worldg.add(obj)
+			}
+		}
 	}
 	 
 	update(){
@@ -240,6 +262,12 @@ class Game {
 			keyState['zoomOut'] = false;
 		}
 
+		// if(keyState['Lmouse']){
+			
+			
+		// 	keyState['Lmouse'] = false;
+		// }
+
 		if(this.objthing !== undefined){
 			this.objthing.rotation.z += 0.01;
 			this.objthing.rotation.x += 0.01;
@@ -247,11 +275,24 @@ class Game {
 		}
 
 	    if(keyState['x']){
-		    for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
-		    	var vec = this.terrain.geometry.vertices[i]
-		    	vec.x *= Math.random()
-		    	this.terrain.geometry.verticesNeedUpdate = true;
-		    }
+		    // for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
+		    // 	var vec = this.terrain.geometry.vertices[i]
+		    // 	vec.x *= Math.random()
+		    // 	this.terrain.geometry.verticesNeedUpdate = true;
+		    // }
+
+		    // this.tiles[8].select()
+		    // this.terrain.geometry.colorsNeedUpdate = true;
+
+		   if(this.currSelTile !== undefined){
+				var obj = this.assets["assets/ctms/tree.ctm"].clone()
+
+				obj.position.x = this.currSelTile.position.x
+				obj.position.y = this.currSelTile.position.y
+		        obj.position.z = this.currSelTile.position.z
+
+		        this.worldg.add(obj)
+			}
 		}
 
 		//mouse selection
