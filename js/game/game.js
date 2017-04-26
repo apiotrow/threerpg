@@ -7,6 +7,7 @@ class Game {
 		this.appW = 800;
 		this.appH = 600;
 		this.assets = assets;
+		this.titlebarheight = TITLEBARHEIGHT
 		this.renderer = new THREE.WebGLRenderer({antialias: true});
 		this.scene = new THREE.Scene();
 	    this.camera = new THREE.PerspectiveCamera(75, this.appW / this.appH, 1, 10000);
@@ -20,18 +21,26 @@ class Game {
 	    this.camera.position.y = 300;
 	    Game.rotateLocal(this.camera, -36, 0, 0)
 
+	    this.raycaster = new THREE.Raycaster()
+		this.mouse = new THREE.Vector2()
+		window.addEventListener('mousemove', (e)=>{
+			e.preventDefault();
+			this.mouse.x = (e.clientX / this.appW) * 2 - 1;
+			this.mouse.y = -((e.clientY - this.titlebarheight) / this.appH) * 2 + 1;
+		}, false);
+
 	    var assetArray = Object.keys(this.assets)
 
-		// for(var i = 0; i < 50; i++){
-		// 	var randAsset = assetArray[Math.floor(Math.random() * assetArray.length)]
-		// 	var obj = this.assets[randAsset].clone()
+		for(var i = 0; i < 50; i++){
+			var randAsset = assetArray[Math.floor(Math.random() * assetArray.length)]
+			var obj = this.assets[randAsset].clone()
 
-	 //        obj.position.x = (Math.random() * 1000) - 500
-	 //        obj.position.z = -(Math.random() * 1000)
+	        obj.position.x = (Math.random() * 1000) - 500
+	        obj.position.z = -(Math.random() * 1000)
 
-	 //        this.worldg.add(obj)
-	 //        this.scene.add(obj);
-		// }
+	        this.worldg.add(obj)
+	        this.scene.add(obj);
+		}
 
 		var light
 
@@ -75,12 +84,13 @@ class Game {
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapD = 35
-		var tileD = 50
-		var heightM = 250
+		var mapD = 100
+		var tileD = 10
+		var heightM = 80
 
 		var h = perlin.generatePerlinNoise(mapD, mapD);
 
+		//push vertices into geometry
 		for(var i = 0; i < mapD; i++){
 			for(var j = 0; j < mapD; j++){
 				var index = (i * mapD) + j
@@ -96,7 +106,7 @@ class Game {
 
 
 		//snake a line through verts to create grid
-		var lineMaterial = new THREE.LineBasicMaterial({color: 0xDF4949, linewidth: 5});
+		var lineMaterial = new THREE.LineBasicMaterial({color: 0xDF4949, linewidth: 10});
 		var horizontalLineGeom = new THREE.Geometry();
 		var verticalLineGeom = new THREE.Geometry();
 
@@ -151,26 +161,44 @@ class Game {
 			count++
 		}
 
+		horizontalLineGeom.computeLineDistances();
+		verticalLineGeom.computeLineDistances();
+		this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
+		this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
+
 
 		//create faces
 		for(var i = 0; i < (mapD * (mapD - 1)) - 1; i++){
 			if((i + 1) % mapD == 0)
 				continue
 
-			geom.faces.push(new THREE.Face3(i, i + mapD, i + 1));
-			geom.faces.push(new THREE.Face3(i + mapD, i + mapD + 1, i + 1));
+			var face1 = new THREE.Face3(i, i + mapD, i + 1)
+			var face2 = new THREE.Face3(i + mapD, i + mapD + 1, i + 1)
+			face1.vertexColors[0] = new THREE.Color(0x00ff00)
+			face1.vertexColors[1] = new THREE.Color(0x00ff00)
+			face1.vertexColors[2] = new THREE.Color(0x00ff00)
+			face2.vertexColors[0] = new THREE.Color(0x00ff00)
+			face2.vertexColors[1] = new THREE.Color(0x00ff00)
+			face2.vertexColors[2] = new THREE.Color(0x00ff00)
+			geom.faces.push(face1);
+			geom.faces.push(face2);
 		}
-
-		this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
-		this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
 
 		//center camera
 		this.camera.position.x = (mapD * tileD) / 2
 		this.camera.position.z = (mapD * tileD)
+		this.camera.position.y = heightM * 2
 
 		geom.computeFaceNormals();
 
-		this.terrain = new THREE.Mesh(geom, new THREE.MeshNormalMaterial());
+		// this.terrain = new THREE.Mesh(geom, new THREE.MeshStandardMaterial());
+		this.terrain = new THREE.Mesh(geom,
+			new THREE.MeshPhongMaterial({
+	        	wireframe: false, 
+	        	shading: THREE.FlatShading, 
+	        	vertexColors: THREE.VertexColors,
+	        	shininess: 0
+	        }));
 		this.scene.add(this.terrain);
 	}
 	 
@@ -215,6 +243,20 @@ class Game {
 		    	vec.x *= Math.random()
 		    	this.terrain.geometry.verticesNeedUpdate = true;
 		    }
+		}
+
+		this.raycaster.setFromCamera(this.mouse, cam);
+		var intersects = this.raycaster.intersectObjects(scene.children);
+		for (var i = 0; i < intersects.length; i++) {
+			if(intersects[0].object == this.terrain){
+				var face = intersects[0].face
+
+				face.vertexColors[0].setHex(0xff0000)
+				face.vertexColors[1].setHex(0xff0000)
+				face.vertexColors[2].setHex(0xff0000)
+
+				this.terrain.geometry.colorsNeedUpdate = true;
+			}
 		}
 
 		renderer.render(scene, cam);
