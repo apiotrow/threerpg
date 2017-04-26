@@ -1,6 +1,7 @@
 var THREE = require('three');
 require('../three/CTMLoader.js')
 var perlin = require('perlin-noise');
+var Tile = require('./tile.js')
 
 class Game {
 	constructor(assets){
@@ -29,6 +30,9 @@ class Game {
 			this.mouse.y = -((e.clientY - this.titlebarheight) / this.appH) * 2 + 1;
 		}, false);
 
+		this.tiles = {}
+		this.currSelTile
+
 	    var assetArray = Object.keys(this.assets)
 
 		for(var i = 0; i < 50; i++){
@@ -44,8 +48,8 @@ class Game {
 
 		var light
 
-		light = new THREE.DirectionalLight(0xffffff, 1);
-	    light.position.set(-1, 1, 0.5)
+	    light = new THREE.DirectionalLight(0xffffff, 0.5);
+	    light.position.set(0.7, 1, -0.5)
 	    light.target.position.set(0, 0, 0);
 	    light.castShadow = true;
 	    this.scene.add(light);
@@ -84,7 +88,7 @@ class Game {
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapD = 100
+		var mapD = 10
 		var tileD = 10
 		var heightM = 80
 
@@ -97,7 +101,7 @@ class Game {
 
 				var hCont = h[index] * heightM;
 
-				var hDiscLevels = 5;
+				var hDiscLevels = 7;
 				var hDisc = (Math.floor(h[index] * hDiscLevels) * heightM) / hDiscLevels;
 
 				geom.vertices.push(new THREE.Vector3(j * tileD, hDisc, i * tileD));
@@ -163,8 +167,8 @@ class Game {
 
 		horizontalLineGeom.computeLineDistances();
 		verticalLineGeom.computeLineDistances();
-		this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
-		this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
+		// this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
+		// this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
 
 
 		//create faces
@@ -174,15 +178,20 @@ class Game {
 
 			var face1 = new THREE.Face3(i, i + mapD, i + 1)
 			var face2 = new THREE.Face3(i + mapD, i + mapD + 1, i + 1)
-			face1.vertexColors[0] = new THREE.Color(0x00ff00)
-			face1.vertexColors[1] = new THREE.Color(0x00ff00)
-			face1.vertexColors[2] = new THREE.Color(0x00ff00)
-			face2.vertexColors[0] = new THREE.Color(0x00ff00)
-			face2.vertexColors[1] = new THREE.Color(0x00ff00)
-			face2.vertexColors[2] = new THREE.Color(0x00ff00)
+
+			var index = i + j
+			var tile = new Tile(face1, face2, index)
+			face1.tile = tile
+			face2.tile = tile
+			tile.init()
+
+			this.tiles[index] = tile
+
 			geom.faces.push(face1);
 			geom.faces.push(face2);
 		}
+
+		console.log(this.tiles)
 
 		//center camera
 		this.camera.position.x = (mapD * tileD) / 2
@@ -245,15 +254,21 @@ class Game {
 		    }
 		}
 
+		//mouse selection
 		this.raycaster.setFromCamera(this.mouse, cam);
 		var intersects = this.raycaster.intersectObjects(scene.children);
 		for (var i = 0; i < intersects.length; i++) {
 			if(intersects[0].object == this.terrain){
 				var face = intersects[0].face
 
-				face.vertexColors[0].setHex(0xff0000)
-				face.vertexColors[1].setHex(0xff0000)
-				face.vertexColors[2].setHex(0xff0000)
+				if(this.currSelTile === undefined){
+					face.tile.select()
+					this.currSelTile = face.tile
+				}else{
+					this.currSelTile.deselect()
+					this.currSelTile = face.tile
+					face.tile.select()
+				}
 
 				this.terrain.geometry.colorsNeedUpdate = true;
 			}
