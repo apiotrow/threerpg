@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			        Game.rotateLocal(obj, -90, 0, 0)
 
+			        file = file.replace("assets/","")
 					assetmeshes[file] = obj
 					resolve();
 				})

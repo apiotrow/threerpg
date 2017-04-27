@@ -37,15 +37,15 @@ class Game {
 
 	    var assetArray = Object.keys(this.assets)
 
-		for(var i = 0; i < 50; i++){
-			var randAsset = assetArray[Math.floor(Math.random() * assetArray.length)]
-			var obj = this.assets[randAsset].clone()
+		// for(var i = 0; i < 50; i++){
+		// 	var randAsset = assetArray[Math.floor(Math.random() * assetArray.length)]
+		// 	var obj = this.assets[randAsset].clone()
 
-	        obj.position.x = (Math.random() * 1000) - 500
-	        obj.position.z = -(Math.random() * 1000)
+	 //        obj.position.x = (Math.random() * 1000) - 500
+	 //        obj.position.z = -(Math.random() * 1000)
 
-	        this.worldg.add(obj)
-		}
+	 //        this.worldg.add(obj)
+		// }
 
 		var light
 
@@ -87,24 +87,40 @@ class Game {
 
 		var mapDActual = 100;
 		var tileD = 10
-		var heightM = 80
-
-		var mapD = mapDActual + 1
+		var heightM = 280
+		var hDiscLevels = 15;
 		
+		var mapD = mapDActual + 1
 		var h = perlin.generatePerlinNoise(mapD, mapD);
 
-		//push vertices into geometry
+		//create verts
+		var heights = new Set()
+		var verts = [];
 		for(var i = 0; i < mapD; i++){
 			for(var j = 0; j < mapD; j++){
 				var index = (i * mapD) + j
-
-				var hCont = h[index] * heightM;
-
-				var hDiscLevels = 10;
 				var hDisc = (Math.floor(h[index] * hDiscLevels) * heightM) / hDiscLevels;
-
-				geom.vertices.push(new THREE.Vector3(j * tileD, hDisc, i * tileD));
+				heights.add(hDisc)
+				verts.push(new THREE.Vector3(j * tileD, hDisc, i * tileD))
 			}
+		}
+
+		//get heights in sorted order
+		var heightsArray = Array.from(heights)
+		heightsArray.sort((a,b)=> { return a - b;})
+		console.log(heightsArray)
+
+		var waterAlt = heightsArray[3]
+		var treeAlt = [heightsArray[4], heightsArray[7]]
+		var sparseTreeAlt = [heightsArray[8], heightsArray[11]]
+		var snowAltFromTop = 3
+
+		//push verts into geometry
+		for(var i = 0; i < verts.length; i++){
+			if(verts[i].y <= waterAlt)
+				geom.vertices.push(new THREE.Vector3(verts[i].x, waterAlt, verts[i].z));
+			else
+				geom.vertices.push(verts[i]);
 		}
 
 
@@ -182,18 +198,28 @@ class Game {
 			geom.faces.push(face1);
 			geom.faces.push(face2);
 
+			//calculate position of center of tile
+			var cornerHeights = [
+				geom.vertices[i].y,
+				geom.vertices[i + mapD + 1].y,
+				geom.vertices[i + 1].y,
+				geom.vertices[i + mapD].y
+			]
 			var topleft = geom.vertices[i]
 			var bottomright = geom.vertices[i + mapD + 1]
 			var pos = new THREE.Vector3(
 				(bottomright.x + topleft.x) / 2,
-				(bottomright.y + topleft.y) / 2,
+				(Math.max.apply(null, cornerHeights) + Math.min.apply(null, cornerHeights)) / 2,
 				(bottomright.z + topleft.z) / 2)
 
 			var index = i
-			var tile = new Tile(face1, face2, index, pos)
+			var tile = new Tile(face1, face2, index, pos, geom)
 			face1.tile = tile
 			face2.tile = tile
-			tile.init()
+
+			tile.init(tile.grassColor)
+			tile.fillInWater(waterAlt)
+			tile.fillInSnow(heightsArray[heightsArray.length - snowAltFromTop - 1])
 
 			this.tiles[++count] = tile
 		}
@@ -220,9 +246,31 @@ class Game {
 		this.scene.add(this.terrain);
 
 		//add trees
+		// h = perlin.generatePerlinNoise(mapD, mapD);
 		for(var i in this.tiles){
-			if(this.tiles[i].flatFace){
-				var obj = this.assets["assets/ctms/tree.ctm"].clone()
+			// if(this.tiles[i].flatFace){
+			// if(this.tiles[i].position.y > treeAlt[0] 
+			// 	&& this.tiles[i].position.y < treeAlt[1]
+			// 	&& this.tiles[i].flatFace){
+			// if(h[i] > 0.8){
+
+			//thick forest
+			if(this.tiles[i].position.y > treeAlt[0] 
+				&& this.tiles[i].position.y < treeAlt[1]){
+			
+				var obj = this.assets["ctms/tree.ctm"].clone()
+
+				obj.position.x = this.tiles[i].position.x
+				obj.position.y = this.tiles[i].position.y
+		        obj.position.z = this.tiles[i].position.z
+
+		        this.worldg.add(obj)
+		    //sparse forest
+			}else if(this.tiles[i].position.y > sparseTreeAlt[0] 
+				&& this.tiles[i].position.y < sparseTreeAlt[1]
+				&& this.tiles[i].flatFace){
+
+				var obj = this.assets["ctms/tree.ctm"].clone()
 
 				obj.position.x = this.tiles[i].position.x
 				obj.position.y = this.tiles[i].position.y
@@ -234,38 +282,32 @@ class Game {
 	}
 	 
 	update(){
-		var cam = this.camera
-		var keyState = this.keyState
-		var scene = this.scene
-		var renderer = this.renderer
-
-		if(keyState['d']){
-			cam.position.x += 10;
-		}else if(keyState['a']){
-			cam.position.x -= 10;
+		if(this.keyState['d']){
+			this.camera.position.x += 10;
+		}else if(this.keyState['a']){
+			this.camera.position.x -= 10;
 		}
-		if(keyState['w']){
-			cam.position.z -= 10;
-		}else if(keyState['s']){
-			cam.position.z += 10;
+		if(this.keyState['w']){
+			this.camera.position.z -= 10;
+		}else if(this.keyState['s']){
+			this.camera.position.z += 10;
 		}
-		if(keyState['q']){
-			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), 1)
-		}else if(keyState['e']){
-			Game.rotateGlobal(cam, new THREE.Vector3(0, 1, 0), -1)
+		if(this.keyState['q']){
+			Game.rotateGlobal(this.camera, new THREE.Vector3(0, 1, 0), 1)
+		}else if(this.keyState['e']){
+			Game.rotateGlobal(this.camera, new THREE.Vector3(0, 1, 0), -1)
 		}
-		if(keyState['zoomIn']){
-			cam.position.y -= 10;
-			keyState['zoomIn'] = false;
-		}else if (keyState['zoomOut']){
-			cam.position.y += 10;
-			keyState['zoomOut'] = false;
+		if(this.keyState['zoomIn']){
+			this.camera.position.y -= 10;
+			this.keyState['zoomIn'] = false;
+		}else if (this.keyState['zoomOut']){
+			this.camera.position.y += 10;
+			this.keyState['zoomOut'] = false;
 		}
 
-		// if(keyState['Lmouse']){
+		// if(this.keyState['Lmouse']){
 			
-			
-		// 	keyState['Lmouse'] = false;
+		// 	this.keyState['Lmouse'] = false;
 		// }
 
 		if(this.objthing !== undefined){
@@ -274,7 +316,7 @@ class Game {
 	    	this.objthing.rotation.y += 0.01;
 		}
 
-	    if(keyState['x']){
+	    if(this.keyState['x']){
 		    // for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
 		    // 	var vec = this.terrain.geometry.vertices[i]
 		    // 	vec.x *= Math.random()
@@ -285,7 +327,7 @@ class Game {
 		    // this.terrain.geometry.colorsNeedUpdate = true;
 
 		   if(this.currSelTile !== undefined){
-				var obj = this.assets["assets/ctms/tree.ctm"].clone()
+				var obj = this.assets["ctms/tree.ctm"].clone()
 
 				obj.position.x = this.currSelTile.position.x
 				obj.position.y = this.currSelTile.position.y
@@ -295,9 +337,18 @@ class Game {
 			}
 		}
 
+		// this.tileSelection();
+
+		this.renderer.render(this.scene, this.camera);
+
+		requestAnimationFrame(()=> {this.update()});
+	}
+
+	tileSelection(){
 		//mouse selection
-		this.raycaster.setFromCamera(this.mouse, cam);
-		var intersects = this.raycaster.intersectObjects(scene.children);
+		this.raycaster.setFromCamera(this.mouse, this.camera);
+		var intersects = this.raycaster.intersectObject(this.terrain);
+		// var intersects = this.raycaster.intersectObjects(this.scene.children);
 		for (var i = 0; i < intersects.length; i++) {
 			if(intersects[0].object == this.terrain){
 				var face = intersects[0].face
@@ -314,10 +365,6 @@ class Game {
 				this.terrain.geometry.colorsNeedUpdate = true;
 			}
 		}
-
-		renderer.render(scene, cam);
-
-		requestAnimationFrame(()=> {this.update()});
 	}
 
 	static rotateLocal(object,degreeX, degreeY, degreeZ){

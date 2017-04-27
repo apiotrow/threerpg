@@ -1,24 +1,58 @@
 var THREE = require('three');
 
 class Tile {
-	constructor(face1, face2, index, pos){
+	constructor(face1, face2, index, pos, geom){
 		this.face1 = face1
 		this.face2 = face2
 		this.index = index
 		this.position = pos
 		this.flatFace = false
-		this.initColor = 0x00ff00
+		this.grassColor = 0x00ff00
 		this.selectColor = 0xff0000;
-		this.flatColor = 0x0000ff;
+		this.waterColor = 0x0000ff;
+		this.snowColor = 0xffffff
+
+		this.face1y = (
+			geom.vertices[face1.a].y + 
+			geom.vertices[face1.b].y + 
+			geom.vertices[face1.c].y
+			) / 3
+		this.face2y = (
+			geom.vertices[face2.a].y + 
+			geom.vertices[face2.b].y + 
+			geom.vertices[face2.c].y
+			) / 3
 	}
 
-	init(){
-		this.initFacesColors(this.initColor)
+	init(color){
+		this.initFacesColors(color)
+	}
+
+	fillInSnow(height){
+		for(var i = 0; i < 3; i++){
+			if(this.face1y > height)
+				this.face1.vertexColors[i] = new THREE.Color(this.snowColor)
+		}
+		for(var i = 0; i < 3; i++){
+			if(this.face2y > height)
+				this.face2.vertexColors[i] = new THREE.Color(this.snowColor)
+		}
+	}
+
+	fillInWater(height){
+		for(var i = 0; i < 3; i++){
+			if(this.face1y == height)
+				this.face1.vertexColors[i] = new THREE.Color(this.waterColor)
+		}
+		for(var i = 0; i < 3; i++){
+			if(this.face2y == height)
+				this.face2.vertexColors[i] = new THREE.Color(this.waterColor)
+		}
 	}
 
 	highlightFlatFaces(){
 		if(this.face1.normal.y == 1 && this.face2.normal.y == 1){
-			this.initFacesColors(this.flatColor)
+			this.initFacesColors(this.waterColor)
 		}
 	}
 
@@ -27,7 +61,7 @@ class Tile {
 	}
 
 	deselect(){
-		this.changeFacesColors(this.initColor)
+		this.changeFacesColors(this.grassColor)
 	}
 
 	initFacesColors(color){
