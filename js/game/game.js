@@ -22,7 +22,7 @@ class Game {
 	    this.scene.background = new THREE.Color(0x000000);
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
-	    Game.rotateLocal(this.camera, -45, 0, 0)
+	    Game.rotateLocal(this.camera, -0, 0, 0)
 
 	    this.raycaster = new THREE.Raycaster()
 		this.mouse = new THREE.Vector2()
@@ -39,24 +39,23 @@ class Game {
 
 		// for(var i = 0; i < 50; i++){
 		// 	var randAsset = assetArray[Math.floor(Math.random() * assetArray.length)]
-		// 	var obj = this.assets[randAsset].clone()
+			// var obj = this.assets[randAsset].clone()
 
-	 //        obj.position.x = (Math.random() * 1000) - 500
-	 //        obj.position.z = -(Math.random() * 1000)
+	  //       obj.position.x = (Math.random() * 1000) - 500
+	  //       obj.position.z = -(Math.random() * 1000)
 
-	 //        this.worldg.add(obj)
+	  //       this.worldg.add(obj)
 		// }
 
-		var light
-
-	    light = new THREE.DirectionalLight(0xffffff, 0.5);
+	
+	    var light = new THREE.DirectionalLight(0xffffff, 0.5);
 	    light.position.set(0.7, 1, -0.5)
 	    light.target.position.set(0, 0, 0);
 	    light.castShadow = true;
-	    this.scene.add(light);
+	    this.worldg.add(light);
 	    
 	    light = new THREE.AmbientLight(0x8C8C8C);
-	 	this.scene.add(light);
+	 	this.worldg.add(light);
 
 	    this.keyState = {};
 	    window.addEventListener('keydown', (e)=>{
@@ -87,11 +86,15 @@ class Game {
 
 		var mapDActual = 100;
 		var tileD = 10
-		var heightM = 280
+		var heightM = 330
 		var hDiscLevels = 15;
 		
 		var mapD = mapDActual + 1
 		var h = perlin.generatePerlinNoise(mapD, mapD);
+		var h2 = perlin.generatePerlinNoise(mapD, mapD);
+		for(var i in h2){
+			h2[i] *= 1
+		}
 
 		//create verts
 		var heights = new Set()
@@ -107,7 +110,7 @@ class Game {
 
 		//get heights in sorted order
 		var heightsArray = Array.from(heights)
-		heightsArray.sort((a,b)=> { return a - b;})
+		heightsArray.sort((a,b)=> {return a - b})
 		console.log(heightsArray)
 
 		var waterAlt = heightsArray[3]
@@ -243,7 +246,7 @@ class Game {
 	        	vertexColors: THREE.VertexColors,
 	        	shininess: 0
 	        }));
-		this.scene.add(this.terrain);
+		this.worldg.add(this.terrain);
 
 		//add trees
 		// h = perlin.generatePerlinNoise(mapD, mapD);
@@ -264,7 +267,7 @@ class Game {
 				obj.position.y = this.tiles[i].position.y
 		        obj.position.z = this.tiles[i].position.z
 
-		        this.worldg.add(obj)
+		        // this.worldg.add(obj)
 		    //sparse forest
 			}else if(this.tiles[i].position.y > sparseTreeAlt[0] 
 				&& this.tiles[i].position.y < sparseTreeAlt[1]
@@ -276,9 +279,34 @@ class Game {
 				obj.position.y = this.tiles[i].position.y
 		        obj.position.z = this.tiles[i].position.z
 
-		        this.worldg.add(obj)
+		        // this.worldg.add(obj)
 			}
 		}
+
+		// this.worldg.position.x -= (mapDActual * tileD) / 2
+		// this.scene.position.x += (mapDActual * tileD) / 2
+
+		// this.worldg.position.y -= (mapDActual * tileD) / 2
+		// this.scene.position.y += (mapDActual * tileD) / 2
+
+		// this.terrain.position.x += (mapDActual * tileD) / 2
+
+		// var obj = this.assets["ctms/bugsports.ctm"].clone()
+  //       obj.position.x = 0
+  //       obj.position.y = 0
+  //       obj.position.z = 0
+  //       this.scene.add(obj)
+
+
+		console.log(this.terrain.geometry.vertices.length)
+		for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
+	    	var vec = this.terrain.geometry.vertices[i]
+	    	vec.x -= (mapDActual * tileD) / 2
+	    	vec.y -= (mapDActual * tileD) / 2
+	    	vec.z -= (mapDActual * tileD) / 2
+	    	vec.applyAxisAngle(new THREE.Vector3(0,0,1), (vec.x / 4) * (Math.PI / 180))
+	    }
+	    this.terrain.geometry.verticesNeedUpdate = true;
 	}
 	 
 	update(){
@@ -320,21 +348,27 @@ class Game {
 		    // for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
 		    // 	var vec = this.terrain.geometry.vertices[i]
 		    // 	vec.x *= Math.random()
+		    // 	// vec.applyAxisAngle(new THREE.Vector3(0,0,1), -i * (Math.PI / 180))
 		    // 	this.terrain.geometry.verticesNeedUpdate = true;
 		    // }
 
 		    // this.tiles[8].select()
 		    // this.terrain.geometry.colorsNeedUpdate = true;
 
-		   if(this.currSelTile !== undefined){
-				var obj = this.assets["ctms/tree.ctm"].clone()
+		 //   if(this.currSelTile !== undefined){
+			// 	var obj = this.assets["ctms/tree.ctm"].clone()
 
-				obj.position.x = this.currSelTile.position.x
-				obj.position.y = this.currSelTile.position.y
-		        obj.position.z = this.currSelTile.position.z
+			// 	obj.position.x = this.currSelTile.position.x
+			// 	obj.position.y = this.currSelTile.position.y
+		 //        obj.position.z = this.currSelTile.position.z
 
-		        this.worldg.add(obj)
-			}
+		 //        this.worldg.add(obj)
+			// }
+
+			// Game.rotateGlobal(this.scene, new THREE.Vector3(0, 0, 1), 1)
+			this.terrain.rotation.z += -1 * (Math.PI / 180)
+			// this.worldg.rotation.z = -45 * (Math.PI / 180)
+			// console.log(this.worldg.rotation)
 		}
 
 		// this.tileSelection();
