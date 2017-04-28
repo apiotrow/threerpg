@@ -84,9 +84,9 @@ class Game {
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapDActual = 100;
+		var mapDActual = 600;
 		var tileD = 10
-		var heightM = 330
+		var heightM = 830
 		var hDiscLevels = 15;
 		
 		var mapD = mapDActual + 1
@@ -113,8 +113,8 @@ class Game {
 		heightsArray.sort((a,b)=> {return a - b})
 		console.log(heightsArray)
 
-		var waterAlt = heightsArray[3]
-		var treeAlt = [heightsArray[4], heightsArray[7]]
+		var waterAlt = heightsArray[5]
+		var treeAlt = [heightsArray[6], heightsArray[7]]
 		var sparseTreeAlt = [heightsArray[8], heightsArray[11]]
 		var snowAltFromTop = 3
 
@@ -301,10 +301,10 @@ class Game {
 		console.log(this.terrain.geometry.vertices.length)
 		for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
 	    	var vec = this.terrain.geometry.vertices[i]
-	    	vec.x -= (mapDActual * tileD) / 2
-	    	vec.y -= (mapDActual * tileD) / 2
-	    	vec.z -= (mapDActual * tileD) / 2
-	    	vec.applyAxisAngle(new THREE.Vector3(0,0,1), (vec.x / 4) * (Math.PI / 180))
+	    	vec.x /= 100
+	    	vec.y -= (mapD * tileD) / 2
+	    	vec.z *= 6
+	    	vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), (vec.x * 18) * (Math.PI / 180))
 	    }
 	    this.terrain.geometry.verticesNeedUpdate = true;
 	}
@@ -326,10 +326,10 @@ class Game {
 			Game.rotateGlobal(this.camera, new THREE.Vector3(0, 1, 0), -1)
 		}
 		if(this.keyState['zoomIn']){
-			this.camera.position.y -= 10;
+			this.camera.position.y -= 50;
 			this.keyState['zoomIn'] = false;
 		}else if (this.keyState['zoomOut']){
-			this.camera.position.y += 10;
+			this.camera.position.y += 50;
 			this.keyState['zoomOut'] = false;
 		}
 
@@ -366,7 +366,7 @@ class Game {
 			// }
 
 			// Game.rotateGlobal(this.scene, new THREE.Vector3(0, 0, 1), 1)
-			this.terrain.rotation.z += -1 * (Math.PI / 180)
+			this.terrain.rotation.z += -0.1 * (Math.PI / 180)
 			// this.worldg.rotation.z = -45 * (Math.PI / 180)
 			// console.log(this.worldg.rotation)
 		}
