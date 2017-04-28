@@ -22,7 +22,7 @@ class Game {
 	    this.scene.background = new THREE.Color(0x000000);
 	    this.camera.position.z = 300;
 	    this.camera.position.y = 300;
-	    Game.rotateLocal(this.camera, -0, 0, 0)
+	    Game.rotateLocal(this.camera, -45, 0, 0)
 
 	    this.raycaster = new THREE.Raycaster()
 		this.mouse = new THREE.Vector2()
@@ -84,17 +84,16 @@ class Game {
 	generateTerrain(){
 		var geom = new THREE.Geometry();
 
-		var mapDActual = 600;
+		var mapDActual = 500;
 		var tileD = 10
-		var heightM = 830
+		var heightM = 130
 		var hDiscLevels = 15;
 		
 		var mapD = mapDActual + 1
 		var h = perlin.generatePerlinNoise(mapD, mapD);
-		var h2 = perlin.generatePerlinNoise(mapD, mapD);
-		for(var i in h2){
-			h2[i] *= 1
-		}
+		var h2 = perlin.generatePerlinNoise(mapD, mapD, {octaveCount: 7});
+		for(var i in h2)
+			h2[i] *= 2
 
 		//create verts
 		var heights = new Set()
@@ -102,7 +101,7 @@ class Game {
 		for(var i = 0; i < mapD; i++){
 			for(var j = 0; j < mapD; j++){
 				var index = (i * mapD) + j
-				var hDisc = (Math.floor(h[index] * hDiscLevels) * heightM) / hDiscLevels;
+				var hDisc = (Math.floor(h[index] * h2[index] * h2[index] * h2[index] * hDiscLevels) * heightM) / hDiscLevels;
 				heights.add(hDisc)
 				verts.push(new THREE.Vector3(j * tileD, hDisc, i * tileD))
 			}
@@ -153,7 +152,6 @@ class Game {
 			}
 
 			horizontalLineGeom.vertices.push(geom.vertices[nextVert])
-
 			count++
 		}
 		
@@ -188,12 +186,20 @@ class Game {
 		// this.scene.add(new THREE.Line(horizontalLineGeom, lineMaterial));
 		// this.scene.add(new THREE.Line(verticalLineGeom, lineMaterial));
 
+		// for(var i = 0; i < geom.vertices.length; i++){
+		// 	geom.vertices[i].y *= h2[i]
+		// }
 
 		//create faces
 		var count = -1;
 		for(var i = 0; i < (mapD * (mapD - 1)) - 1; i++){
 			if((i + 1) % mapD == 0)
 				continue
+
+			// geom.vertices[i + mapD].y *= h2[i] 
+			// geom.vertices[i + mapD + 1].y *= h2[i] 
+			// geom.vertices[i].y *= h2[i] 
+			// geom.vertices[i + 1].y *= h2[i] 
 
 			var face1 = new THREE.Face3(i, i + mapD, i + 1)
 			var face2 = new THREE.Face3(i + mapD, i + mapD + 1, i + 1)
@@ -236,7 +242,7 @@ class Game {
 		//center camera
 		this.camera.position.x = (mapD * tileD) / 2
 		this.camera.position.z = (mapD * tileD)
-		this.camera.position.y = heightM * 2
+		this.camera.position.y = heightM * 6
 
 		// this.terrain = new THREE.Mesh(geom, new THREE.MeshStandardMaterial());
 		this.terrain = new THREE.Mesh(geom,
@@ -279,7 +285,7 @@ class Game {
 				obj.position.y = this.tiles[i].position.y
 		        obj.position.z = this.tiles[i].position.z
 
-		        // this.worldg.add(obj)
+		        this.worldg.add(obj)
 			}
 		}
 
@@ -291,22 +297,14 @@ class Game {
 
 		// this.terrain.position.x += (mapDActual * tileD) / 2
 
-		// var obj = this.assets["ctms/bugsports.ctm"].clone()
-  //       obj.position.x = 0
-  //       obj.position.y = 0
-  //       obj.position.z = 0
-  //       this.scene.add(obj)
-
-
-		console.log(this.terrain.geometry.vertices.length)
-		for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
-	    	var vec = this.terrain.geometry.vertices[i]
-	    	vec.x /= 100
-	    	vec.y -= (mapD * tileD) / 2
-	    	vec.z *= 6
-	    	vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), (vec.x * 18) * (Math.PI / 180))
-	    }
-	    this.terrain.geometry.verticesNeedUpdate = true;
+		// for(var i = 0; i < this.terrain.geometry.vertices.length; i++){
+	 //    	var vec = this.terrain.geometry.vertices[i]
+	 //    	vec.x /= 100
+	 //    	vec.y -= (mapD * tileD) / 2
+	 //    	vec.z *= 6
+	 //    	vec.applyAxisAngle(new THREE.Vector3(0, 0, 1), (vec.x * 18) * (Math.PI / 180))
+	 //    }
+	 //    this.terrain.geometry.verticesNeedUpdate = true;
 	}
 	 
 	update(){
@@ -366,8 +364,8 @@ class Game {
 			// }
 
 			// Game.rotateGlobal(this.scene, new THREE.Vector3(0, 0, 1), 1)
-			this.terrain.rotation.z += -0.1 * (Math.PI / 180)
-			// this.worldg.rotation.z = -45 * (Math.PI / 180)
+			// this.terrain.rotation.z += -0.1 * (Math.PI / 180)
+			this.worldg.rotation.z = -90 * (Math.PI / 180)
 			// console.log(this.worldg.rotation)
 		}
 
